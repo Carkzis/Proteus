@@ -1,8 +1,14 @@
 package com.carkzis.proteus
 
+import android.app.PendingIntent
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
@@ -24,12 +30,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toAndroidRectF
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.PictureInPictureModeChangedInfo
+import androidx.core.graphics.toRect
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
@@ -58,7 +69,6 @@ fun PlayerRoute(
     )
 }
 
-@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
     modifier: Modifier = Modifier,
@@ -79,66 +89,106 @@ fun PlayerScreen(
         }
 
         exoPlayer?.let {
-            var duration by remember {
-                mutableLongStateOf(exoPlayer.duration.takeIf { it >= 0 } ?: 0L)
-            }
-            var position by remember { mutableLongStateOf(0L) }
+            val context = LocalContext.current
 
-            LaunchedEffect(Unit) {
-                while (true) {
-                    position = exoPlayer.currentPosition
-                    delay(500L)
-                }
-            }
-
-            LaunchedEffect(
-                exoPlayer.isPlaying
-            ) {
-                if (exoPlayer.isPlaying) {
-                    duration = exoPlayer.duration
-                }
-            }
-
-            Box(
-                modifier = Modifier.padding(8.dp)
-            ) {
-                PlayerSurface(
-                    player = exoPlayer,
-                    surfaceType = SURFACE_TYPE_SURFACE_VIEW,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .align(Alignment.Center)
+            val pipModifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                val builder = PictureInPictureParams.Builder()
+                builder.setActions(
+                    listOfRemoteActions(context)
                 )
 
-                val context = LocalContext.current
-
-                if (!isInPipMode) {
-                    Button(
-                        modifier = Modifier.align(Alignment.TopEnd),
-                        onClick = {
-                            context.findActivity().enterPictureInPictureMode(
-                                PictureInPictureParams.Builder().build()
-                            )
-                        }) {
-                        Text(text = "Enter PiP mode!")
-                    }
-
-                    Slider(
-                        value = position.toFloat(),
-                        onValueChange = {
-                            exoPlayer.isScrubbingModeEnabled = true
-                            exoPlayer.seekTo(it.toLong())
-                        },
-                        valueRange = 0f..duration.toFloat(),
-                        onValueChangeFinished = {
-                            exoPlayer.isScrubbingModeEnabled = false
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(8.dp)
-                            .align(Alignment.BottomCenter)
+                if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
+                    val sourceRect = layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
+                    builder.setSourceRectHint(sourceRect)
+                    builder.setAspectRatio(
+                        Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
                     )
                 }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    builder.setAutoEnterEnabled(true)
+                }
+                context.findActivity().setPictureInPictureParams(builder.build())
             }
+
+            VideoPlayer(
+                modifier = pipModifier,
+                exoPlayer = exoPlayer,
+                isInPipMode = isInPipMode
+            )
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+private fun VideoPlayer(
+    modifier: Modifier = Modifier,
+    exoPlayer: ExoPlayer,
+    isInPipMode: Boolean
+) {
+    var duration by remember {
+        mutableLongStateOf(exoPlayer.duration.takeIf { it >= 0 } ?: 0L)
+    }
+    var position by remember { mutableLongStateOf(0L) }
+
+    PlayerBroadcastReceiver(exoPlayer)
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            position = exoPlayer.currentPosition
+            delay(500L)
+        }
+    }
+
+    LaunchedEffect(
+        exoPlayer.isPlaying
+    ) {
+        if (exoPlayer.isPlaying) {
+            duration = exoPlayer.duration
+        }
+    }
+
+    Box(
+        modifier = modifier.padding(8.dp)
+    ) {
+        PlayerSurface(
+            player = exoPlayer,
+            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .align(Alignment.Center)
+        )
+
+        val context = LocalContext.current
+
+        if (!isInPipMode) {
+            Button(
+                modifier = Modifier.align(Alignment.TopEnd),
+                onClick = {
+                    context.findActivity().enterPictureInPictureMode(
+                        PictureInPictureParams.Builder().build()
+                    )
+                }) {
+                Text(text = "Enter PiP mode!")
+            }
+
+            Slider(
+                value = position.toFloat(),
+                onValueChange = {
+                    exoPlayer.isScrubbingModeEnabled = true
+                    exoPlayer.seekTo(it.toLong())
+                },
+                valueRange = 0f..duration.toFloat(),
+                onValueChangeFinished = {
+                    exoPlayer.isScrubbingModeEnabled = false
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .align(Alignment.BottomCenter)
+            )
         }
     }
 }
@@ -167,4 +217,33 @@ internal fun Context.findActivity(): ComponentActivity {
         context = context.baseContext
     }
     throw IllegalStateException("Picture in picture should be called in the context of an Activity")
+}
+
+fun listOfRemoteActions(context: Context): List<RemoteAction> {
+    val pauseIntent = Intent(ACTION_BROADCAST_CONTROL).apply {
+        putExtra(EXTRA_CONTROL_TYPE, EXTRA_CONTROL_PAUSE)
+    }
+    val pausePendingIntent = PendingIntent.getActivity(
+        context, 0, pauseIntent, PendingIntent.FLAG_IMMUTABLE
+    )
+    val playIntent = Intent(ACTION_BROADCAST_CONTROL).apply {
+        putExtra(EXTRA_CONTROL_TYPE, EXTRA_CONTROL_PLAY)
+    }
+    val playPendingIntent = PendingIntent.getActivity(
+        context, 1, playIntent, PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val pauseAction = RemoteAction(
+        Icon.createWithResource(context, android.R.drawable.ic_media_pause),
+        "Pause",
+        "Pause the video",
+        pausePendingIntent
+    )
+    val playAction = RemoteAction(
+        Icon.createWithResource(context, android.R.drawable.ic_media_play),
+        "Play",
+        "Play the video",
+        playPendingIntent
+    )
+    return listOf(pauseAction, playAction)
 }

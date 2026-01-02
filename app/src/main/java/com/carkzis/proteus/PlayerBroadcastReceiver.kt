@@ -28,18 +28,8 @@ fun PlayerBroadcastReceiver(player: Player?) {
 
     val context = LocalContext.current
     DisposableEffect(player) {
-        val broadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if ((intent == null) || (intent.action != ACTION_BROADCAST_CONTROL)) {
-                    return
-                }
-
-                when (intent.getIntExtra(EXTRA_CONTROL_TYPE, 0)) {
-                    EXTRA_CONTROL_PAUSE -> player.pause()
-                    EXTRA_CONTROL_PLAY -> player.play()
-                }
-            }
-        }
+        val broadcastReceiver = PlayerBroadcastReceiverImpl()
+        broadcastReceiver.player = player
 
         ContextCompat.registerReceiver(
             context,
@@ -50,6 +40,21 @@ fun PlayerBroadcastReceiver(player: Player?) {
 
         onDispose {
             context.unregisterReceiver(broadcastReceiver)
+        }
+    }
+}
+
+class PlayerBroadcastReceiverImpl(): BroadcastReceiver() {
+    var player: Player? = null
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        if ((intent == null) || (intent.action != ACTION_BROADCAST_CONTROL)) {
+            return
+        }
+
+        when (intent.getIntExtra(EXTRA_CONTROL_TYPE, 0)) {
+            EXTRA_CONTROL_PAUSE -> player?.pause()
+            EXTRA_CONTROL_PLAY -> player?.play()
         }
     }
 }
