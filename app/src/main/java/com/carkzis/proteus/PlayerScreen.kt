@@ -1,5 +1,10 @@
 package com.carkzis.proteus
 
+import android.app.PictureInPictureParams
+import android.content.Context
+import android.content.ContextWrapper
+import android.os.Build
+import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,8 +16,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,8 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.PictureInPictureModeChangedInfo
+import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
@@ -67,6 +75,7 @@ fun PlayerScreen(
 ) {
     var duration by remember { mutableLongStateOf(exoPlayer.duration.takeIf { it >= 0 } ?: 0L) }
     var position by remember { mutableLongStateOf(0L) }
+    val inPipMode = rememberIsInPipMode()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -95,6 +104,21 @@ fun PlayerScreen(
                 .align(Alignment.Center)
         )
 
+        val context = LocalContext.current
+        Button(
+            modifier = Modifier.align(Alignment.TopEnd),
+            onClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.findActivity().enterPictureInPictureMode(
+                    PictureInPictureParams.Builder().build()
+                )
+            } else {
+                Log.i("PROTEUS_TAG", "API does not support PiP")
+            }
+        }) {
+            Text(text = "Enter PiP mode!")
+        }
+
         Slider(
             value = position.toFloat(),
             onValueChange = {
@@ -108,4 +132,34 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxWidth().padding(8.dp).align(Alignment.BottomCenter)
         )
     }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+fun rememberIsInPipMode(): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val activity = LocalContext.current.findActivity()
+        var pipMode by remember { mutableStateOf(activity.isInPictureInPictureMode) }
+        DisposableEffect(activity) {
+            val observer = Consumer<PictureInPictureModeChangedInfo> { info ->
+                pipMode = info.isInPictureInPictureMode
+            }
+            activity.addOnPictureInPictureModeChangedListener(
+                observer
+            )
+            onDispose { activity.removeOnPictureInPictureModeChangedListener(observer) }
+        }
+        return pipMode
+    } else {
+        return false
+    }
+}
+
+internal fun Context.findActivity(): ComponentActivity {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is ComponentActivity) return context
+        context = context.baseContext
+    }
+    throw IllegalStateException("Picture in picture should be called in the context of an Activity")
 }
