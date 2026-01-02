@@ -131,8 +131,9 @@ private fun VideoPlayer(
         mutableLongStateOf(exoPlayer.duration.takeIf { it >= 0 } ?: 0L)
     }
     var position by remember { mutableLongStateOf(0L) }
+    val context = LocalContext.current
 
-    PlayerBroadcastReceiver(exoPlayer)
+    PlayerBroadcastReceiver(exoPlayer, context)
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -160,8 +161,6 @@ private fun VideoPlayer(
                 .aspectRatio(16f / 9f)
                 .align(Alignment.Center)
         )
-
-        val context = LocalContext.current
 
         if (!isInPipMode) {
             Button(
@@ -221,15 +220,17 @@ internal fun Context.findActivity(): ComponentActivity {
 
 fun listOfRemoteActions(context: Context): List<RemoteAction> {
     val pauseIntent = Intent(ACTION_BROADCAST_CONTROL).apply {
+        setPackage(context.packageName)
         putExtra(EXTRA_CONTROL_TYPE, EXTRA_CONTROL_PAUSE)
     }
-    val pausePendingIntent = PendingIntent.getActivity(
+    val pausePendingIntent = PendingIntent.getBroadcast(
         context, 0, pauseIntent, PendingIntent.FLAG_IMMUTABLE
     )
     val playIntent = Intent(ACTION_BROADCAST_CONTROL).apply {
+        setPackage(context.packageName)
         putExtra(EXTRA_CONTROL_TYPE, EXTRA_CONTROL_PLAY)
     }
-    val playPendingIntent = PendingIntent.getActivity(
+    val playPendingIntent = PendingIntent.getBroadcast(
         context, 1, playIntent, PendingIntent.FLAG_IMMUTABLE
     )
 

@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 
@@ -19,14 +18,13 @@ const val EXTRA_CONTROL_PLAY = 1
 const val EXTRA_CONTROL_PAUSE = 2
 
 @Composable
-fun PlayerBroadcastReceiver(player: Player?) {
+fun PlayerBroadcastReceiver(player: Player?, context: Context) {
     val isInPipMode = rememberIsInPipMode()
 
     if (!isInPipMode || player == null) {
         return
     }
 
-    val context = LocalContext.current
     DisposableEffect(player) {
         val broadcastReceiver = PlayerBroadcastReceiverImpl()
         broadcastReceiver.player = player

@@ -14,12 +14,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Proteus">
 
-        <receiver android:name=".PlayerBroadcastReceiverImpl" android:exported="false">
-            <intent-filter>
-                <action android:name="broadcast_control" android:exported="false" />
-            </intent-filter>
-        </receiver>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
