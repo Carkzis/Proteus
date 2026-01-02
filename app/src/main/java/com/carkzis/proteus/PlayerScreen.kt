@@ -3,12 +3,10 @@ package com.carkzis.proteus
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.ContextWrapper
-import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,7 +30,6 @@ import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
@@ -120,13 +117,9 @@ fun PlayerScreen(
                     Button(
                         modifier = Modifier.align(Alignment.TopEnd),
                         onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                context.findActivity().enterPictureInPictureMode(
-                                    PictureInPictureParams.Builder().build()
-                                )
-                            } else {
-                                Log.i("PROTEUS_TAG", "API does not support PiP")
-                            }
+                            context.findActivity().enterPictureInPictureMode(
+                                PictureInPictureParams.Builder().build()
+                            )
                         }) {
                         Text(text = "Enter PiP mode!")
                     }
@@ -153,22 +146,18 @@ fun PlayerScreen(
 @OptIn(UnstableApi::class)
 @Composable
 fun rememberIsInPipMode(): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val activity = LocalContext.current.findActivity()
-        var pipMode by remember { mutableStateOf(activity.isInPictureInPictureMode) }
-        DisposableEffect(activity) {
-            val observer = Consumer<PictureInPictureModeChangedInfo> { info ->
-                pipMode = info.isInPictureInPictureMode
-            }
-            activity.addOnPictureInPictureModeChangedListener(
-                observer
-            )
-            onDispose { activity.removeOnPictureInPictureModeChangedListener(observer) }
+    val activity = LocalContext.current.findActivity()
+    var pipMode by remember { mutableStateOf(activity.isInPictureInPictureMode) }
+    DisposableEffect(activity) {
+        val observer = Consumer<PictureInPictureModeChangedInfo> { info ->
+            pipMode = info.isInPictureInPictureMode
         }
-        return pipMode
-    } else {
-        return false
+        activity.addOnPictureInPictureModeChangedListener(
+            observer
+        )
+        onDispose { activity.removeOnPictureInPictureModeChangedListener(observer) }
     }
+    return pipMode
 }
 
 internal fun Context.findActivity(): ComponentActivity {
