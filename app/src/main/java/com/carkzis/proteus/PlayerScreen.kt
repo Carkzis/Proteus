@@ -77,6 +77,7 @@ fun PlayerRoute(
     )
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
     modifier: Modifier = Modifier,
@@ -138,7 +139,17 @@ fun PlayerScreen(
             )
         }
 
-        Text("Media Length: ${mediaMetadata?.durationUs ?: ""} Us")
+        val formats = (0 until (mediaMetadata?.trackGroups?.length ?: 0)).map {
+            val trackGroup = mediaMetadata?.trackGroups?.get(it)
+            trackGroup?.getFormat(0)
+        }.joinToString {
+            "$it\n"
+        }.replace("\n, ", "\n")
+
+        Text("Media Length (Us): ${mediaMetadata?.durationUs ?: ""}")
+        Text("Period Count: ${mediaMetadata?.timeline?.periodCount ?: ""}")
+        Text("Window Count: ${mediaMetadata?.timeline?.windowCount ?: ""}")
+        Text("Formats: $formats")
     }
 }
 
