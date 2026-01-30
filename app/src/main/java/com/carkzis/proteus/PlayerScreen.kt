@@ -1,6 +1,7 @@
 package com.carkzis.proteus
 
-import android.R
+import android.R.drawable.ic_media_pause
+import android.R.drawable.ic_media_play
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -304,13 +305,13 @@ fun listOfRemoteActions(context: Context): List<RemoteAction> {
     )
 
     val pauseAction = RemoteAction(
-        Icon.createWithResource(context, R.drawable.ic_media_pause),
+        Icon.createWithResource(context, ic_media_pause),
         "Pause",
         "Pause the video",
         pausePendingIntent
     )
     val playAction = RemoteAction(
-        Icon.createWithResource(context, R.drawable.ic_media_play),
+        Icon.createWithResource(context, ic_media_play),
         "Play",
         "Play the video",
         playPendingIntent
