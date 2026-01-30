@@ -1,5 +1,6 @@
 package com.carkzis.proteus
 
+import android.R
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -11,6 +12,7 @@ import android.os.Build
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toAndroidRectF
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -54,6 +57,7 @@ fun PlayerRoute(
 ) {
     val exoPlayer = playerViewModel.playerState.collectAsStateWithLifecycle()
     val mediaMetadata = playerViewModel.mediaMetadata.collectAsStateWithLifecycle()
+    val frameData = playerViewModel.frameData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inPipMode = rememberIsInPipMode()
 
@@ -61,6 +65,7 @@ fun PlayerRoute(
         modifier = modifier,
         exoPlayer = exoPlayer.value,
         mediaMetadata = mediaMetadata.value,
+        frameData = frameData.value,
         isInPipMode = inPipMode,
         onPlayerLaunch = {
             playerViewModel.createPlayerWithMediaItems(
@@ -70,6 +75,12 @@ fun PlayerRoute(
         },
         onObtainMetadata = {
             playerViewModel.retrieveMetadata(
+                context,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            )
+        },
+        onExtractFrame = {
+            playerViewModel.extractFrame(
                 context,
                 "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
             )
@@ -83,9 +94,11 @@ fun PlayerScreen(
     modifier: Modifier = Modifier,
     exoPlayer: ExoPlayer?,
     mediaMetadata: MediaMetadata?,
+    frameData: FrameData?,
     isInPipMode: Boolean,
     onPlayerLaunch: () -> Unit,
-    onObtainMetadata: () -> Unit
+    onObtainMetadata: () -> Unit,
+    onExtractFrame: () -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize()
@@ -105,6 +118,13 @@ fun PlayerScreen(
                     modifier = Modifier
                 ) {
                     Text(text = "Obtain Metadata")
+                }
+
+                Button(
+                    onClick = onExtractFrame,
+                    modifier = Modifier
+                ) {
+                    Text(text = "Extract Frame")
                 }
             }
         }
@@ -139,17 +159,33 @@ fun PlayerScreen(
             )
         }
 
-        val formats = (0 until (mediaMetadata?.trackGroups?.length ?: 0)).map {
-            val trackGroup = mediaMetadata?.trackGroups?.get(it)
-            trackGroup?.getFormat(0)
-        }.joinToString {
-            "$it\n"
-        }.replace("\n, ", "\n")
+        mediaMetadata?.let {
+            val formats = (0 until (mediaMetadata.trackGroups.length)).map {
+                val trackGroup = mediaMetadata.trackGroups.get(it)
+                trackGroup.getFormat(0)
+            }.joinToString {
+                "$it\n"
+            }.replace("\n, ", "\n")
 
-        Text("Media Length (Us): ${mediaMetadata?.durationUs ?: ""}")
-        Text("Period Count: ${mediaMetadata?.timeline?.periodCount ?: ""}")
-        Text("Window Count: ${mediaMetadata?.timeline?.windowCount ?: ""}")
-        Text("Formats: $formats")
+            Text("Media Length (Us): ${mediaMetadata.durationUs}")
+            Text("Period Count: ${mediaMetadata.timeline.periodCount}")
+            Text("Window Count: ${mediaMetadata.timeline.windowCount}")
+            Text("Formats: $formats")
+        }
+
+        frameData?.let {
+            Text("Frame at 5000ms:")
+            Image(
+                bitmap = frameData.frame.bitmap.asImageBitmap(),
+                contentDescription = null
+            )
+
+            Text("Thumbnail:")
+            Image(
+                bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
+                contentDescription = null
+            )
+        }
     }
 }
 
@@ -268,13 +304,13 @@ fun listOfRemoteActions(context: Context): List<RemoteAction> {
     )
 
     val pauseAction = RemoteAction(
-        Icon.createWithResource(context, android.R.drawable.ic_media_pause),
+        Icon.createWithResource(context, R.drawable.ic_media_pause),
         "Pause",
         "Pause the video",
         pausePendingIntent
     )
     val playAction = RemoteAction(
-        Icon.createWithResource(context, android.R.drawable.ic_media_play),
+        Icon.createWithResource(context, R.drawable.ic_media_play),
         "Play",
         "Play the video",
         playPendingIntent

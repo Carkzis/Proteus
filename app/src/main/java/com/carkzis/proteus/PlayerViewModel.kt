@@ -10,6 +10,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.TrackGroupArray
+import androidx.media3.inspector.FrameExtractor
 import androidx.media3.inspector.MetadataRetriever
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,9 @@ class PlayerViewModel: ViewModel() {
 
     private val _mediaMetadata = MutableStateFlow<MediaMetadata?>(null)
     val mediaMetadata: StateFlow<MediaMetadata?> = _mediaMetadata
+
+    private val _frameData = MutableStateFlow<FrameData?>(null)
+    val frameData: StateFlow<FrameData?> = _frameData
 
     @OptIn(UnstableApi::class)
     fun createPlayerWithMediaItems(context: Context, uri: String) {
@@ -77,10 +81,46 @@ class PlayerViewModel: ViewModel() {
             throw RuntimeException(e)
         }
     }
+
+    fun extractFrame(context: Context, uri: String) {
+        val mediaItem = MediaItem.Builder().setUri(uri).build()
+
+        viewModelScope.launch {
+            extractFrame(context, mediaItem)
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    suspend fun extractFrame(context: Context, mediaItem: MediaItem) {
+        try {
+            // 1. Build the frame extractor.
+            // `FrameExtractor` implements `AutoCloseable`, so wrap it in
+            // a Kotlin `.use` block, which calls `close()` automatically.
+            FrameExtractor.Builder(context, mediaItem).build().use { extractor ->
+                // 2. Extract frames asynchronously.
+                val frame = extractor.getFrame(5000L).await()
+                val thumbnail = extractor.thumbnail.await()
+
+                val frameData = FrameData(
+                    frame,
+                    thumbnail
+                )
+
+                _frameData.value = frameData
+            }
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
+    }
 }
 
 data class MediaMetadata(
     @param:SuppressLint("UnsafeOptInUsageError") val trackGroups: TrackGroupArray,
     val timeline: Timeline,
     val durationUs: Long
+)
+
+data class FrameData(
+    @param:SuppressLint("UnsafeOptInUsageError") val frame: FrameExtractor.Frame,
+    @param:SuppressLint("UnsafeOptInUsageError") val thumbnail: FrameExtractor.Frame
 )
