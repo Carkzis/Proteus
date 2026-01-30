@@ -53,15 +53,23 @@ fun PlayerRoute(
     playerViewModel: PlayerViewModel = viewModel(),
 ) {
     val exoPlayer = playerViewModel.playerState.collectAsStateWithLifecycle()
+    val mediaMetadata = playerViewModel.mediaMetadata.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inPipMode = rememberIsInPipMode()
 
     PlayerScreen(
         modifier = modifier,
         exoPlayer = exoPlayer.value,
+        mediaMetadata = mediaMetadata.value,
         isInPipMode = inPipMode,
         onPlayerLaunch = {
             playerViewModel.createPlayerWithMediaItems(
+                context,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            )
+        },
+        onObtainMetadata = {
+            playerViewModel.retrieveMetadata(
                 context,
                 "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
             )
@@ -73,18 +81,30 @@ fun PlayerRoute(
 fun PlayerScreen(
     modifier: Modifier = Modifier,
     exoPlayer: ExoPlayer?,
+    mediaMetadata: MediaMetadata?,
     isInPipMode: Boolean,
-    onPlayerLaunch: () -> Unit
+    onPlayerLaunch: () -> Unit,
+    onObtainMetadata: () -> Unit
 ) {
     Column(
         modifier = modifier.fillMaxSize()
+            .padding(16.dp)
     ) {
         if (!isInPipMode) {
-            Button(
-                onClick = onPlayerLaunch,
-                modifier = Modifier
-            ) {
-                Text(text = "Play Video")
+            Column {
+                Button(
+                    onClick = onPlayerLaunch,
+                    modifier = Modifier
+                ) {
+                    Text(text = "Play Video")
+                }
+
+                Button(
+                    onClick = onObtainMetadata,
+                    modifier = Modifier
+                ) {
+                    Text(text = "Obtain Metadata")
+                }
             }
         }
 
@@ -117,6 +137,8 @@ fun PlayerScreen(
                 isInPipMode = isInPipMode
             )
         }
+
+        Text("Media Length: ${mediaMetadata?.durationUs ?: ""} Us")
     }
 }
 

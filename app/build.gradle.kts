@@ -53,6 +53,9 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.media)
+    implementation(libs.guava)
+    implementation(libs.androidx.concurrent.futures)
+    implementation(libs.kotlinx.coroutines.guava)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
@@ -60,6 +63,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.ui.compose)
     implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.inspector)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
