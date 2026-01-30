@@ -49,6 +49,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+import com.carkzis.proteus.ui.theme.Typography
 import kotlinx.coroutines.delay
 
 @Composable
@@ -161,6 +162,15 @@ fun PlayerScreen(
         }
 
         mediaMetadata?.let {
+            Text("Media Length (Us):", style = Typography.titleMedium)
+            Text("${mediaMetadata.durationUs}")
+
+            Text("Period Count:", style = Typography.titleMedium)
+            Text("${mediaMetadata.timeline.periodCount}")
+
+            Text("Window Count:", style = Typography.titleMedium)
+            Text("${mediaMetadata.timeline.windowCount}")
+
             val formats = (0 until (mediaMetadata.trackGroups.length)).map {
                 val trackGroup = mediaMetadata.trackGroups.get(it)
                 trackGroup.getFormat(0)
@@ -168,20 +178,18 @@ fun PlayerScreen(
                 "$it\n"
             }.replace("\n, ", "\n")
 
-            Text("Media Length (Us): ${mediaMetadata.durationUs}")
-            Text("Period Count: ${mediaMetadata.timeline.periodCount}")
-            Text("Window Count: ${mediaMetadata.timeline.windowCount}")
-            Text("Formats: $formats")
+            Text("Formats:", style = Typography.titleMedium)
+            Text(formats)
         }
 
         frameData?.let {
-            Text("Frame at 5000ms:")
+            Text("Frame at 5000ms:", style = Typography.titleMedium)
             Image(
                 bitmap = frameData.frame.bitmap.asImageBitmap(),
                 contentDescription = null
             )
 
-            Text("Thumbnail:")
+            Text("Thumbnail:", style = Typography.titleMedium)
             Image(
                 bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
                 contentDescription = null
