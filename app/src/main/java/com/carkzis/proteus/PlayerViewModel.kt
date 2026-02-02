@@ -98,7 +98,7 @@ class PlayerViewModel: ViewModel() {
             // a Kotlin `.use` block, which calls `close()` automatically.
             FrameExtractor.Builder(context, mediaItem).build().use { extractor ->
                 // 2. Extract frames asynchronously.
-                val frame = extractor.getFrame(5000L).await()
+                val frame = extractor.getFrame(30000L).await()
                 val thumbnail = extractor.thumbnail.await()
 
                 val frameData = FrameData(

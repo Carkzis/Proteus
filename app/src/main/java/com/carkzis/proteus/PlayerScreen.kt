@@ -183,7 +183,7 @@ fun PlayerScreen(
         }
 
         frameData?.let {
-            Text("Frame at 5000ms:", style = Typography.titleMedium)
+            Text("Frame at 30000ms:", style = Typography.titleMedium)
             Image(
                 bitmap = frameData.frame.bitmap.asImageBitmap(),
                 contentDescription = null
