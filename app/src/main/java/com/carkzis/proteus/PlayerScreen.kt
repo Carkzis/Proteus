@@ -16,9 +16,11 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -104,12 +106,21 @@ fun PlayerScreen(
     onExtractFrame: () -> Unit
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize()
-            .padding(16.dp)
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (!isInPipMode) {
             item {
-                Column {
+                Text(
+                    text = "Proteus",
+                    style = Typography.headlineLarge,
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Button(
                         onClick = onPlayerLaunch,
                         modifier = Modifier
@@ -138,7 +149,7 @@ fun PlayerScreen(
             exoPlayer?.let {
                 val context = LocalContext.current
 
-                val pipModifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                val pipModifier = Modifier.onGloballyPositioned { layoutCoordinates ->
                     val builder = PictureInPictureParams.Builder()
                     builder.setActions(
                         listOfRemoteActions(context)
@@ -169,6 +180,8 @@ fun PlayerScreen(
 
         item {
             mediaMetadata?.let {
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text("Media Length (Us):", style = Typography.titleMedium)
                 Text("${mediaMetadata.durationUs}")
 
@@ -207,12 +220,14 @@ fun PlayerScreen(
             frameData?.let {
                 Text("Frame at 30000ms:", style = Typography.titleMedium)
                 Image(
+                    modifier = Modifier.padding(16.dp),
                     bitmap = frameData.frame.bitmap.asImageBitmap(),
                     contentDescription = null
                 )
 
                 Text("Thumbnail:", style = Typography.titleMedium)
                 Image(
+                    modifier = Modifier.padding(16.dp),
                     bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
                     contentDescription = null
                 )
