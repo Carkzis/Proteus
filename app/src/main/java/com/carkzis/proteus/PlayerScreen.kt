@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -102,98 +103,120 @@ fun PlayerScreen(
     onObtainMetadata: () -> Unit,
     onExtractFrame: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = modifier.fillMaxSize()
             .padding(16.dp)
     ) {
         if (!isInPipMode) {
-            Column {
-                Button(
-                    onClick = onPlayerLaunch,
-                    modifier = Modifier
-                ) {
-                    Text(text = "Play Video")
-                }
+            item {
+                Column {
+                    Button(
+                        onClick = onPlayerLaunch,
+                        modifier = Modifier
+                    ) {
+                        Text(text = "Play Video")
+                    }
 
-                Button(
-                    onClick = onObtainMetadata,
-                    modifier = Modifier
-                ) {
-                    Text(text = "Obtain Metadata")
-                }
+                    Button(
+                        onClick = onObtainMetadata,
+                        modifier = Modifier
+                    ) {
+                        Text(text = "Obtain Metadata")
+                    }
 
-                Button(
-                    onClick = onExtractFrame,
-                    modifier = Modifier
-                ) {
-                    Text(text = "Extract Frame")
+                    Button(
+                        onClick = onExtractFrame,
+                        modifier = Modifier
+                    ) {
+                        Text(text = "Extract Frame")
+                    }
                 }
             }
         }
 
-        exoPlayer?.let {
-            val context = LocalContext.current
+        item {
+            exoPlayer?.let {
+                val context = LocalContext.current
 
-            val pipModifier = modifier.onGloballyPositioned { layoutCoordinates ->
-                val builder = PictureInPictureParams.Builder()
-                builder.setActions(
-                    listOfRemoteActions(context)
+                val pipModifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                    val builder = PictureInPictureParams.Builder()
+                    builder.setActions(
+                        listOfRemoteActions(context)
+                    )
+
+                    if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
+                        val sourceRect =
+                            layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
+                        builder.setSourceRectHint(sourceRect)
+                        builder.setAspectRatio(
+                            Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
+                        )
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        builder.setAutoEnterEnabled(true)
+                    }
+                    context.findActivity().setPictureInPictureParams(builder.build())
+                }
+
+                VideoPlayer(
+                    modifier = pipModifier,
+                    exoPlayer = exoPlayer,
+                    isInPipMode = isInPipMode
+                )
+            }
+        }
+
+        item {
+            mediaMetadata?.let {
+                Text("Media Length (Us):", style = Typography.titleMedium)
+                Text("${mediaMetadata.durationUs}")
+
+                Text("Period Count:", style = Typography.titleMedium)
+                Text("${mediaMetadata.timeline.periodCount}")
+
+                Text("Window Count:", style = Typography.titleMedium)
+                Text("${mediaMetadata.timeline.windowCount}")
+
+                val formats = (0 until (mediaMetadata.trackGroups.length)).map {
+                    val trackGroup = mediaMetadata.trackGroups.get(it)
+                    trackGroup.getFormat(0)
+                }
+
+                val codecs = formats.map {
+                    it.codecs
+                }.joinToString {
+                    it.toString()
+                }
+
+                Text("Codecs:", style = Typography.titleMedium)
+                Text(codecs)
+
+                val bitrates = formats.map {
+                    it.bitrate
+                }.joinToString {
+                    it.toString()
+                }
+
+                Text("Bitrates:", style = Typography.titleMedium)
+                Text(bitrates)
+            }
+        }
+
+        item {
+            frameData?.let {
+                Text("Frame at 30000ms:", style = Typography.titleMedium)
+                Image(
+                    bitmap = frameData.frame.bitmap.asImageBitmap(),
+                    contentDescription = null
                 )
 
-                if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
-                    val sourceRect = layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
-                    builder.setSourceRectHint(sourceRect)
-                    builder.setAspectRatio(
-                        Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
-                    )
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    builder.setAutoEnterEnabled(true)
-                }
-                context.findActivity().setPictureInPictureParams(builder.build())
+                Text("Thumbnail:", style = Typography.titleMedium)
+                Image(
+                    bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
+                    contentDescription = null
+                )
             }
-
-            VideoPlayer(
-                modifier = pipModifier,
-                exoPlayer = exoPlayer,
-                isInPipMode = isInPipMode
-            )
-        }
-
-        mediaMetadata?.let {
-            Text("Media Length (Us):", style = Typography.titleMedium)
-            Text("${mediaMetadata.durationUs}")
-
-            Text("Period Count:", style = Typography.titleMedium)
-            Text("${mediaMetadata.timeline.periodCount}")
-
-            Text("Window Count:", style = Typography.titleMedium)
-            Text("${mediaMetadata.timeline.windowCount}")
-
-            val formats = (0 until (mediaMetadata.trackGroups.length)).map {
-                val trackGroup = mediaMetadata.trackGroups.get(it)
-                trackGroup.getFormat(0)
-            }.joinToString {
-                "$it\n"
-            }.replace("\n, ", "\n")
-
-            Text("Formats:", style = Typography.titleMedium)
-            Text(formats)
-        }
-
-        frameData?.let {
-            Text("Frame at 30000ms:", style = Typography.titleMedium)
-            Image(
-                bitmap = frameData.frame.bitmap.asImageBitmap(),
-                contentDescription = null
-            )
-
-            Text("Thumbnail:", style = Typography.titleMedium)
-            Image(
-                bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
-                contentDescription = null
-            )
         }
     }
 }
