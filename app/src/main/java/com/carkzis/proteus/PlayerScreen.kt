@@ -14,6 +14,7 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -47,9 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
-import androidx.media3.ui.compose.material3.indicator.ProgressSlider
+import androidx.media3.ui.compose.material3.Player
 import com.carkzis.proteus.ui.theme.Typography
 
 @Composable
@@ -244,16 +243,20 @@ private fun VideoPlayer(
 
     PlayerBroadcastReceiver(exoPlayer, context)
 
+    var showControls by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier.padding(8.dp)
     ) {
-        PlayerSurface(
+        Player(
             player = exoPlayer,
-            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .align(Alignment.Center)
+                .clickable {
+                    showControls = !showControls
+                },
+            showControls = showControls
         )
 
         if (!isInPipMode) {
@@ -266,14 +269,6 @@ private fun VideoPlayer(
                 }) {
                 Text(text = "Enter PiP mode!")
             }
-
-            ProgressSlider(
-                player = exoPlayer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .align(Alignment.BottomCenter)
-            )
         }
     }
 }
