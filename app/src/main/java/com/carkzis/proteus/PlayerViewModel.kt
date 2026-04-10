@@ -3,6 +3,7 @@ package com.carkzis.proteus
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.media.audiofx.Equalizer
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -135,6 +136,22 @@ class PlayerViewModel: ViewModel() {
             }
         } catch (e: Exception) {
             throw RuntimeException(e)
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    fun boostBass() {
+        _playerState.value?.let { player ->
+            val audioSessionId = player.audioSessionId
+            val equalizer = Equalizer(0, audioSessionId)
+            equalizer.enabled = true
+            val numberOfBands = equalizer.numberOfBands
+            // Boost the lowest frequency band (bass)
+            if (numberOfBands > 0) {
+                val bassBand = 0 // Typically the lowest band is at index 0
+                val maxLevel = equalizer.bandLevelRange[1]
+                equalizer.setBandLevel(bassBand.toShort(), maxLevel) // Boost to max
+            }
         }
     }
 }

@@ -108,6 +108,9 @@ fun PlayerRoute(
                 context,
                 "https://www.w3schools.com/tags/mov_bbb.mp4"
             )
+        },
+        onBoostBass = {
+            playerViewModel.boostBass()
         }
     )
 }
@@ -123,7 +126,8 @@ fun PlayerScreen(
     onPlayerLaunch: () -> Unit,
     onPlayerLaunchWithAudioReversed: () -> Unit,
     onObtainMetadata: () -> Unit,
-    onExtractFrame: () -> Unit
+    onExtractFrame: () -> Unit,
+    onBoostBass: () -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -168,6 +172,13 @@ fun PlayerScreen(
                         modifier = Modifier
                     ) {
                         Text(text = "Extract Frame")
+                    }
+
+                    Button(
+                        onClick = onBoostBass,
+                        modifier = Modifier,
+                    ) {
+                        Text(text = "Boost Bass")
                     }
                 }
             }
