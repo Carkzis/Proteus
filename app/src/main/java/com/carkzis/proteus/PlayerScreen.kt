@@ -262,7 +262,7 @@ private fun VideoPlayer(
         Player(
             player = exoPlayer,
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .aspectRatio(16f / 9f)
                 .clickable {
                     showControls = !showControls
@@ -287,9 +287,10 @@ private fun VideoPlayer(
             }
         )
 
-        if (!isInPipMode) {
+        if (!isInPipMode && showControls) {
             Button(
-                modifier = Modifier.align(Alignment.TopEnd),
+                modifier = Modifier.align(Alignment.TopStart),
+                colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), contentColor = MaterialTheme.colorScheme.primary),
                 onClick = {
                     context.findActivity().enterPictureInPictureMode(
                         PictureInPictureParams.Builder().build()
