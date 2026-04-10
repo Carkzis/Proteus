@@ -82,7 +82,14 @@ fun PlayerRoute(
         onPlayerLaunch = {
             playerViewModel.createPlayerWithMediaItems(
                 context,
-                "https://www.w3schools.com/tags/mov_bbb.mp4"
+                "https://www.w3schools.com/tags/mov_bbb.mp4",
+            )
+        },
+        onPlayerLaunchWithAudioReversed = {
+            playerViewModel.createPlayerWithMediaItems(
+                context,
+                "https://www.w3schools.com/tags/mov_bbb.mp4",
+                reverseAudio = true
             )
         },
         onObtainMetadata = {
@@ -109,6 +116,7 @@ fun PlayerScreen(
     frameData: FrameData?,
     isInPipMode: Boolean,
     onPlayerLaunch: () -> Unit,
+    onPlayerLaunchWithAudioReversed: () -> Unit,
     onObtainMetadata: () -> Unit,
     onExtractFrame: () -> Unit
 ) {
@@ -133,6 +141,13 @@ fun PlayerScreen(
                         modifier = Modifier
                     ) {
                         Text(text = "Play Video")
+                    }
+
+                    Button(
+                        onClick = onPlayerLaunchWithAudioReversed,
+                        modifier = Modifier
+                    ) {
+                        Text(text = "Play Video (but with audio reversed)")
                     }
 
                     Button(

@@ -1,5 +1,6 @@
 package com.carkzis.proteus
 
+
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.annotation.OptIn
@@ -9,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.inspector.MetadataRetriever
 import androidx.media3.inspector.frame.FrameExtractor
@@ -32,18 +34,41 @@ class PlayerViewModel: ViewModel() {
     val frameData: StateFlow<FrameData?> = _frameData
 
     @OptIn(UnstableApi::class)
-    fun createPlayerWithMediaItems(context: Context, uri: String) {
+    fun createPlayerWithMediaItems(context: Context, uri: String, reverseAudio: Boolean = false) {
         if (_playerState.value == null) {
             // Create Media item
             val mediaItem = MediaItem.Builder().setUri(uri).build()
 
+            val audioProcessors = if (reverseAudio) {
+                arrayOf(
+                    InvertAudioProcessor(),
+                    ReverseAudioProcessor()
+                )
+            } else {
+                arrayOf(
+                    InvertAudioProcessor(),
+                )
+            }
+
+            // Create the custom audio sink with the processor
+            val defaultAudioSink = DefaultAudioSink.Builder(context)
+                .setAudioProcessors(audioProcessors)
+                .build()
+
+            // Use the custom RenderersFactory to inject the audio sink
+            val renderersFactory = CustomRenderersFactory(context, defaultAudioSink)
+
             // Create the player instance and update it to UI via stateFlow
             _playerState.update {
-                val exoPlayer = ExoPlayer.Builder(context).build().apply {
-                    setMediaItem(mediaItem)
-                    prepare()
-                    playWhenReady = true
-                }
+                val exoPlayer = ExoPlayer.Builder(context)
+                    .setRenderersFactory(renderersFactory)
+                    .build().apply {
+                        setMediaItem(mediaItem)
+                        prepare()
+
+                        playWhenReady = true
+                    }
+                
                 exoPlayer
             }
         }
