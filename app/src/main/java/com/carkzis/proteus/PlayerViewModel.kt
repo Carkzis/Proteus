@@ -10,8 +10,8 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.TrackGroupArray
-import androidx.media3.inspector.FrameExtractor
 import androidx.media3.inspector.MetadataRetriever
+import androidx.media3.inspector.frame.FrameExtractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

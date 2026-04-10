@@ -24,13 +24,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,8 +49,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+import androidx.media3.ui.compose.material3.indicator.ProgressSlider
 import com.carkzis.proteus.ui.theme.Typography
-import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerRoute(
@@ -75,19 +72,19 @@ fun PlayerRoute(
         onPlayerLaunch = {
             playerViewModel.createPlayerWithMediaItems(
                 context,
-                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                "https://www.w3schools.com/tags/mov_bbb.mp4"
             )
         },
         onObtainMetadata = {
             playerViewModel.retrieveMetadata(
                 context,
-                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                "https://www.w3schools.com/tags/mov_bbb.mp4"
             )
         },
         onExtractFrame = {
             playerViewModel.extractFrame(
                 context,
-                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                "https://www.w3schools.com/tags/mov_bbb.mp4"
             )
         }
     )
@@ -243,28 +240,9 @@ private fun VideoPlayer(
     exoPlayer: ExoPlayer,
     isInPipMode: Boolean
 ) {
-    var duration by remember {
-        mutableLongStateOf(exoPlayer.duration.takeIf { it >= 0 } ?: 0L)
-    }
-    var position by remember { mutableLongStateOf(0L) }
     val context = LocalContext.current
 
     PlayerBroadcastReceiver(exoPlayer, context)
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            position = exoPlayer.currentPosition
-            delay(500L)
-        }
-    }
-
-    LaunchedEffect(
-        exoPlayer.isPlaying
-    ) {
-        if (exoPlayer.isPlaying) {
-            duration = exoPlayer.duration
-        }
-    }
 
     Box(
         modifier = modifier.padding(8.dp)
@@ -289,16 +267,8 @@ private fun VideoPlayer(
                 Text(text = "Enter PiP mode!")
             }
 
-            Slider(
-                value = position.toFloat(),
-                onValueChange = {
-                    exoPlayer.isScrubbingModeEnabled = true
-                    exoPlayer.seekTo(it.toLong())
-                },
-                valueRange = 0f..duration.toFloat(),
-                onValueChangeFinished = {
-                    exoPlayer.isScrubbingModeEnabled = false
-                },
+            ProgressSlider(
+                player = exoPlayer,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp)
