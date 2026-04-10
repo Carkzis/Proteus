@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,9 @@ import androidx.core.graphics.toRect
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Player.REPEAT_MODE_ALL
+import androidx.media3.common.Player.REPEAT_MODE_OFF
+import androidx.media3.common.Player.REPEAT_MODE_ONE
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -61,6 +65,7 @@ import androidx.media3.ui.compose.material3.buttons.ShuffleButton
 import androidx.media3.ui.compose.material3.indicator.PositionAndDurationText
 import androidx.media3.ui.compose.material3.indicator.ProgressSlider
 import com.carkzis.proteus.ui.theme.Typography
+import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerRoute(
@@ -132,7 +137,8 @@ fun PlayerScreen(
                 )
 
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -271,6 +277,29 @@ private fun VideoPlayer(
 
     var showControls by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (exoPlayer.isPlaying && exoPlayer.currentPosition > exoPlayer.duration) {
+                when (exoPlayer.repeatMode) {
+                    REPEAT_MODE_OFF -> {
+                        exoPlayer.pause()
+                    }
+
+                    REPEAT_MODE_ONE -> {
+                        exoPlayer.seekTo(0)
+                        exoPlayer.play()
+                    }
+
+                    REPEAT_MODE_ALL -> {
+                        exoPlayer.seekTo(0)
+                        exoPlayer.play()
+                    }
+                }
+            }
+            delay(100)
+        }
+    }
+
     Box(
         modifier = modifier.padding(8.dp)
     ) {
@@ -287,7 +316,8 @@ private fun VideoPlayer(
                 if (showControls) {
                     ProgressSlider(player)
                     Row(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically,
