@@ -14,9 +14,12 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +28,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -49,6 +55,11 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.material3.Player
+import androidx.media3.ui.compose.material3.buttons.PlaybackSpeedToggleButton
+import androidx.media3.ui.compose.material3.buttons.RepeatButton
+import androidx.media3.ui.compose.material3.buttons.ShuffleButton
+import androidx.media3.ui.compose.material3.indicator.PositionAndDurationText
+import androidx.media3.ui.compose.material3.indicator.ProgressSlider
 import com.carkzis.proteus.ui.theme.Typography
 
 @Composable
@@ -256,7 +267,24 @@ private fun VideoPlayer(
                 .clickable {
                     showControls = !showControls
                 },
-            showControls = showControls
+            showControls = showControls,
+            bottomControls = @Composable { player, showControls ->
+                if (showControls) {
+                    ProgressSlider(player)
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PositionAndDurationText(player, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.weight(1f))
+                        PlaybackSpeedToggleButton(player, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary))
+                        ShuffleButton(player, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary))
+                        RepeatButton(player, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary))
+                    }
+                }
+            }
         )
 
         if (!isInPipMode) {
