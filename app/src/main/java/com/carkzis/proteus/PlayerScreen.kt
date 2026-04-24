@@ -111,6 +111,12 @@ fun PlayerRoute(
         },
         onBoostBass = {
             playerViewModel.boostBass()
+        },
+        onBoostMid = {
+            playerViewModel.boostMid()
+        },
+        onBoostTreble = {
+            playerViewModel.boostTreble()
         }
     )
 }
@@ -128,6 +134,8 @@ fun PlayerScreen(
     onObtainMetadata: () -> Unit,
     onExtractFrame: () -> Unit,
     onBoostBass: () -> Unit,
+    onBoostMid: () -> Unit,
+    onBoostTreble: () -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -179,6 +187,20 @@ fun PlayerScreen(
                         modifier = Modifier,
                     ) {
                         Text(text = "Boost Bass")
+                    }
+
+                    Button(
+                        onClick = onBoostMid,
+                        modifier = Modifier,
+                    ) {
+                        Text(text = "Boost Mid")
+                    }
+
+                    Button(
+                        onClick = onBoostTreble,
+                        modifier = Modifier,
+                    ) {
+                        Text(text = "Boost Treble")
                     }
                 }
             }

@@ -4,6 +4,7 @@ package com.carkzis.proteus
 import android.annotation.SuppressLint
 import android.content.Context
 import android.media.audiofx.Equalizer
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 
+@OptIn(UnstableApi::class)
 @HiltViewModel
 class PlayerViewModel: ViewModel() {
 
@@ -139,18 +141,44 @@ class PlayerViewModel: ViewModel() {
         }
     }
 
-    @OptIn(UnstableApi::class)
     fun boostBass() {
+        boost(BoostType.BASS)
+    }
+
+    fun boostMid() {
+        boost(BoostType.MID)
+    }
+
+    fun boostTreble() {
+        boost(BoostType.TREBLE)
+    }
+
+    private fun boost(band: BoostType) {
         _playerState.value?.let { player ->
             val audioSessionId = player.audioSessionId
             val equalizer = Equalizer(0, audioSessionId)
             equalizer.enabled = true
             val numberOfBands = equalizer.numberOfBands
-            // Boost the lowest frequency band (bass)
+            // Boost the highest frequency band (treble)
             if (numberOfBands > 0) {
-                val bassBand = 0 // Typically the lowest band is at index 0
                 val maxLevel = equalizer.bandLevelRange[1]
-                equalizer.setBandLevel(bassBand.toShort(), maxLevel) // Boost to max
+                val bandId = band.toBandShort(numberOfBands)
+                Log.e("PlayerViewModel", "Current $band band level: ${equalizer.getBandLevel(bandId)}")
+                Log.e("PlayerViewModel", "Range for $band band $bandId: ${equalizer.bandLevelRange[0]} to ${equalizer.bandLevelRange[1]}}")
+                Log.e("PlayerViewModel", "Boosting $band band $bandId to max level $maxLevel")
+                equalizer.setBandLevel(bandId, maxLevel) // Boost to max
+            }
+        }
+    }
+
+    enum class BoostType {
+        BASS, MID, TREBLE;
+
+        fun toBandShort(numberOfBands: Short): Short {
+            return when (this) {
+                BASS -> 0.toShort()
+                MID -> (numberOfBands / 2).toShort()
+                TREBLE -> (numberOfBands - 1).toShort()
             }
         }
     }
