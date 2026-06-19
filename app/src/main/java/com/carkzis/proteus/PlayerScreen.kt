@@ -82,6 +82,7 @@ fun PlayerRoute(
     val preloadManager = playerViewModel.preloadManagerState.collectAsStateWithLifecycle()
     val mediaMetadata = playerViewModel.mediaMetadata.collectAsStateWithLifecycle()
     val frameData = playerViewModel.frameData.collectAsStateWithLifecycle()
+    val preloadFrameData = playerViewModel.preloadFrameData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inPipMode = rememberIsInPipMode()
 
@@ -99,6 +100,7 @@ fun PlayerRoute(
         preloadManager = preloadManager.value,
         mediaMetadata = mediaMetadata.value,
         frameData = frameData.value,
+        preloadFrameData = preloadFrameData.value,
         isInPipMode = inPipMode,
         preloadUrls = preloadUrls,
         onPlayerLaunch = {
@@ -158,6 +160,7 @@ fun PlayerScreen(
     preloadUrls: List<String>,
     mediaMetadata: MediaMetadata?,
     frameData: FrameData?,
+    preloadFrameData: List<FrameData>,
     isInPipMode: Boolean,
     onPlayerLaunch: () -> Unit,
     onPagerLaunch: () -> Unit,
@@ -338,7 +341,7 @@ fun PlayerScreen(
 
         item {
             preloadManager?.let {
-                val pagerState = rememberPagerState(pageCount = { preloadUrls.size - 1 })
+                val pagerState = rememberPagerState(pageCount = { preloadUrls.size })
                 var currentPage by remember { mutableIntStateOf(0) }
 
                 LaunchedEffect(pagerState) {
@@ -349,40 +352,73 @@ fun PlayerScreen(
 
                 HorizontalPager(
                     state = pagerState,
-                    modifier.background(Color.Black)
+                    modifier.background(Color.Black),
+                    beyondViewportPageCount = 3
                 ) { page ->
-                    exoPlayer?.let {
-                        val context = LocalContext.current
+                    if (preloadFrameData.isNotEmpty()) {
+                        exoPlayer?.let {
+                            val context = LocalContext.current
 
-                        val pipModifier = Modifier.onGloballyPositioned { layoutCoordinates ->
-                            val builder = PictureInPictureParams.Builder()
-                            builder.setActions(
-                                listOfRemoteActions(context)
-                            )
+                            val pipModifier =
+                                Modifier.onGloballyPositioned { layoutCoordinates ->
+                                    val builder = PictureInPictureParams.Builder()
+                                    builder.setActions(
+                                        listOfRemoteActions(context)
+                                    )
 
-                            if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
-                                val sourceRect =
-                                    layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
-                                builder.setSourceRectHint(sourceRect)
-                                builder.setAspectRatio(
-                                    Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
-                                )
+                                    if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
+                                        val sourceRect =
+                                            layoutCoordinates.boundsInWindow().toAndroidRectF()
+                                                .toRect()
+                                        builder.setSourceRectHint(sourceRect)
+                                        builder.setAspectRatio(
+                                            Rational(
+                                                exoPlayer.videoSize.width,
+                                                exoPlayer.videoSize.height
+                                            )
+                                        )
+                                    }
+
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        builder.setAutoEnterEnabled(true)
+                                    }
+                                    context.findActivity()
+                                        .setPictureInPictureParams(builder.build())
+                                }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.Black)
+                            ) {
+                                if (page == currentPage) {
+                                    VideoPlayer(
+                                        modifier = pipModifier,
+                                        exoPlayer = exoPlayer,
+                                        isInPipMode = isInPipMode
+                                    )
+
+                                    updateCurrentPlayingIndex(page)
+                                } else {
+                                    Image(
+                                        modifier = Modifier,
+                                        bitmap = preloadFrameData[page].frame.bitmap.asImageBitmap(),
+                                        contentDescription = null
+                                    )
+                                }
                             }
-
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                builder.setAutoEnterEnabled(true)
-                            }
-                            context.findActivity().setPictureInPictureParams(builder.build())
                         }
-
-                        if (page == currentPage) {
-                            VideoPlayer(
-                                modifier = pipModifier,
-                                exoPlayer = exoPlayer,
-                                isInPipMode = isInPipMode
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Black)
+                        ) {
+                            Text(
+                                text = "Loading...",
+                                color = Color.White,
+                                modifier = Modifier.align(Alignment.Center)
                             )
-
-                            updateCurrentPlayingIndex(page)
                         }
                     }
                 }
@@ -451,9 +487,18 @@ private fun VideoPlayer(
                     ) {
                         PositionAndDurationText(player, color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.weight(1f))
-                        PlaybackSpeedToggleButton(player, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary))
-                        ShuffleButton(player, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary))
-                        RepeatButton(player, colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary))
+                        PlaybackSpeedToggleButton(
+                            player,
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        )
+                        ShuffleButton(
+                            player,
+                            colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        )
+                        RepeatButton(
+                            player,
+                            colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        )
                     }
                 }
             }
@@ -462,7 +507,11 @@ private fun VideoPlayer(
         if (!isInPipMode && showControls) {
             Button(
                 modifier = Modifier.align(Alignment.TopStart),
-                colors = ButtonDefaults.textButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), contentColor = MaterialTheme.colorScheme.primary),
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
+                        alpha = 0.5f
+                    ), contentColor = MaterialTheme.colorScheme.primary
+                ),
                 onClick = {
                     context.findActivity().enterPictureInPictureMode(
                         PictureInPictureParams.Builder().build()

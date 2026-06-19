@@ -12,6 +12,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.Presentation
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.TrackGroupArray
@@ -37,6 +38,9 @@ class PlayerViewModel: ViewModel() {
 
     private val _frameData = MutableStateFlow<FrameData?>(null)
     val frameData: StateFlow<FrameData?> = _frameData
+
+    private val _preloadFrameData = MutableStateFlow<List<FrameData>>(emptyList())
+    val preloadFrameData: StateFlow<List<FrameData>> = _preloadFrameData
 
     private val _preloadManagerState = MutableStateFlow<DefaultPreloadManager?>(null)
     val preloadManagerState: StateFlow<DefaultPreloadManager?> = _preloadManagerState
@@ -172,6 +176,10 @@ class PlayerViewModel: ViewModel() {
             MediaItem.Builder().setUri(uri).build()
         }
 
+        viewModelScope.launch {
+            extractInitialFramesForPreload(context, mediaItems)
+        }
+
         addItemsToPreloadManager(mediaItems, preloadManager)
 
         if (_playerState.value == null) {
@@ -180,6 +188,35 @@ class PlayerViewModel: ViewModel() {
 
                 exoPlayer
             }
+        }
+    }
+
+    private suspend fun extractInitialFramesForPreload(
+        context: Context,
+        mediaItems: List<MediaItem>
+    ) {
+        try {
+            _preloadFrameData.value = mediaItems.map { mediaItem ->
+                FrameExtractor.Builder(context, mediaItem).setEffects(
+                    listOf(
+                        Presentation.createForWidthAndHeight(
+                            1280,
+                            720,
+                            Presentation.LAYOUT_SCALE_TO_FIT
+                        )
+                    )
+                ).build().use { extractor ->
+                    val frame = extractor.getFrame(1_000L).await()
+                    val thumbnail = extractor.thumbnail.await()
+
+                    FrameData(
+                        frame,
+                        thumbnail
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            throw RuntimeException(e)
         }
     }
 
