@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButtonDefaults
@@ -41,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toAndroidRectF
 import androidx.compose.ui.layout.boundsInWindow
@@ -58,6 +61,7 @@ import androidx.media3.common.Player.REPEAT_MODE_ONE
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.preload.DefaultPreloadManager
 import androidx.media3.ui.compose.material3.Player
 import androidx.media3.ui.compose.material3.buttons.PlaybackSpeedToggleButton
 import androidx.media3.ui.compose.material3.buttons.RepeatButton
@@ -73,25 +77,44 @@ fun PlayerRoute(
     playerViewModel: PlayerViewModel = viewModel(),
 ) {
     val exoPlayer = playerViewModel.playerState.collectAsStateWithLifecycle()
+    val preloadManager = playerViewModel.preloadManagerState.collectAsStateWithLifecycle()
     val mediaMetadata = playerViewModel.mediaMetadata.collectAsStateWithLifecycle()
     val frameData = playerViewModel.frameData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val inPipMode = rememberIsInPipMode()
 
+    val preloadUrls = listOf(
+        "https://www.w3schools.com/tags/mov_bbb.mp4",
+        "https://docs.evostream.com/sample_content/assets/bun33s.mp4",
+        "https://docs.evostream.com/sample_content/assets/bunny.mp4",
+        "https://docs.evostream.com/sample_content/assets/nosound.mp4",
+        "https://docs.evostream.com/sample_content/assets/poppres240p.mp4"
+    )
+
     PlayerScreen(
         modifier = modifier,
         exoPlayer = exoPlayer.value,
+        preloadManager = preloadManager.value,
         mediaMetadata = mediaMetadata.value,
         frameData = frameData.value,
         isInPipMode = inPipMode,
+        preloadUrls = preloadUrls,
         onPlayerLaunch = {
-            playerViewModel.createPlayerWithMediaItems(
+            playerViewModel.invalidateExoPlayer()
+            playerViewModel.createPlayerWithMediaItem(
                 context,
                 "https://www.w3schools.com/tags/mov_bbb.mp4",
             )
+            playerViewModel.invalidatePreloadManager()
+        },
+        onPagerLaunch = {
+            playerViewModel.createPlayerWithPreloadManager(
+                context,
+                preloadUrls
+            )
         },
         onPlayerLaunchWithAudioReversed = {
-            playerViewModel.createPlayerWithMediaItems(
+            playerViewModel.createPlayerWithMediaItem(
                 context,
                 "https://www.w3schools.com/tags/mov_bbb.mp4",
                 reverseAudio = true
@@ -117,6 +140,9 @@ fun PlayerRoute(
         },
         onBoostTreble = {
             playerViewModel.boostTreble()
+        },
+        updateCurrentPlayingIndex = { index ->
+            playerViewModel.updateCurrentPlayingIndex(index)
         }
     )
 }
@@ -126,16 +152,20 @@ fun PlayerRoute(
 fun PlayerScreen(
     modifier: Modifier = Modifier,
     exoPlayer: ExoPlayer?,
+    preloadManager: DefaultPreloadManager?,
+    preloadUrls: List<String>,
     mediaMetadata: MediaMetadata?,
     frameData: FrameData?,
     isInPipMode: Boolean,
     onPlayerLaunch: () -> Unit,
+    onPagerLaunch: () -> Unit,
     onPlayerLaunchWithAudioReversed: () -> Unit,
     onObtainMetadata: () -> Unit,
     onExtractFrame: () -> Unit,
     onBoostBass: () -> Unit,
     onBoostMid: () -> Unit,
     onBoostTreble: () -> Unit,
+    updateCurrentPlayingIndex: (Int) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -159,6 +189,13 @@ fun PlayerScreen(
                         modifier = Modifier
                     ) {
                         Text(text = "Play Video")
+                    }
+
+                    Button(
+                        onClick = onPagerLaunch,
+                        modifier = Modifier
+                    ) {
+                        Text(text = "Load Pager")
                     }
 
                     Button(
@@ -208,34 +245,36 @@ fun PlayerScreen(
 
         item {
             exoPlayer?.let {
-                val context = LocalContext.current
+                if (preloadManager == null) {
+                    val context = LocalContext.current
 
-                val pipModifier = Modifier.onGloballyPositioned { layoutCoordinates ->
-                    val builder = PictureInPictureParams.Builder()
-                    builder.setActions(
-                        listOfRemoteActions(context)
-                    )
-
-                    if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
-                        val sourceRect =
-                            layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
-                        builder.setSourceRectHint(sourceRect)
-                        builder.setAspectRatio(
-                            Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
+                    val pipModifier = Modifier.onGloballyPositioned { layoutCoordinates ->
+                        val builder = PictureInPictureParams.Builder()
+                        builder.setActions(
+                            listOfRemoteActions(context)
                         )
+
+                        if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
+                            val sourceRect =
+                                layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
+                            builder.setSourceRectHint(sourceRect)
+                            builder.setAspectRatio(
+                                Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
+                            )
+                        }
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            builder.setAutoEnterEnabled(true)
+                        }
+                        context.findActivity().setPictureInPictureParams(builder.build())
                     }
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        builder.setAutoEnterEnabled(true)
-                    }
-                    context.findActivity().setPictureInPictureParams(builder.build())
+                    VideoPlayer(
+                        modifier = pipModifier,
+                        exoPlayer = exoPlayer,
+                        isInPipMode = isInPipMode
+                    )
                 }
-
-                VideoPlayer(
-                    modifier = pipModifier,
-                    exoPlayer = exoPlayer,
-                    isInPipMode = isInPipMode
-                )
             }
         }
 
@@ -292,6 +331,52 @@ fun PlayerScreen(
                     bitmap = frameData.thumbnail.bitmap.asImageBitmap(),
                     contentDescription = null
                 )
+            }
+        }
+
+        item {
+            preloadManager?.let {
+                val pagerState = rememberPagerState(pageCount = { preloadUrls.size - 1 })
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier.background(Color.Black)
+                ) { page ->
+                    exoPlayer?.let {
+                        val context = LocalContext.current
+
+                        val pipModifier = Modifier.onGloballyPositioned { layoutCoordinates ->
+                            val builder = PictureInPictureParams.Builder()
+                            builder.setActions(
+                                listOfRemoteActions(context)
+                            )
+
+                            if (exoPlayer.videoSize != VideoSize.UNKNOWN) {
+                                val sourceRect =
+                                    layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
+                                builder.setSourceRectHint(sourceRect)
+                                builder.setAspectRatio(
+                                    Rational(exoPlayer.videoSize.width, exoPlayer.videoSize.height)
+                                )
+                            }
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                builder.setAutoEnterEnabled(true)
+                            }
+                            context.findActivity().setPictureInPictureParams(builder.build())
+                        }
+
+                        VideoPlayer(
+                            modifier = pipModifier,
+                            exoPlayer = exoPlayer,
+                            isInPipMode = isInPipMode
+                        )
+
+                        if (page == pagerState.currentPage) {
+                            updateCurrentPlayingIndex(page)
+                        }
+                    }
+                }
             }
         }
     }

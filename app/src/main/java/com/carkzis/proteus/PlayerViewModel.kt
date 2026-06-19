@@ -10,10 +10,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
+import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.TrackGroupArray
+import androidx.media3.exoplayer.source.preload.DefaultPreloadManager
 import androidx.media3.inspector.MetadataRetriever
 import androidx.media3.inspector.frame.FrameExtractor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,8 +38,14 @@ class PlayerViewModel: ViewModel() {
     private val _frameData = MutableStateFlow<FrameData?>(null)
     val frameData: StateFlow<FrameData?> = _frameData
 
+    private val _preloadManagerState = MutableStateFlow<DefaultPreloadManager?>(null)
+    val preloadManagerState: StateFlow<DefaultPreloadManager?> = _preloadManagerState
+
+    private val _preloadStatusControl = MutableStateFlow<PreloadStatusControl?>(null)
+    private val preloadMediaItems = MutableStateFlow<List<MediaItem>>(emptyList())
+
     @OptIn(UnstableApi::class)
-    fun createPlayerWithMediaItems(context: Context, uri: String, reverseAudio: Boolean = false) {
+    fun createPlayerWithMediaItem(context: Context, uri: String, reverseAudio: Boolean = false) {
         if (_playerState.value == null) {
             // Create Media item
             val mediaItem = MediaItem.Builder().setUri(uri).build()
@@ -151,6 +159,81 @@ class PlayerViewModel: ViewModel() {
 
     fun boostTreble() {
         boost(BoostType.TREBLE)
+    }
+
+    @OptIn(ExperimentalApi::class)
+    fun createPlayerWithPreloadManager(context: Context, uris: List<String>) {
+        val preloadManagerBuilder = createPreloadManagerBuilder(context)
+        val preloadManager = preloadManagerBuilder.build()
+
+        _preloadManagerState.value = preloadManager
+
+        val mediaItems = uris.map { uri ->
+            MediaItem.Builder().setUri(uri).build()
+        }
+
+        addItemsToPreloadManager(mediaItems, preloadManager)
+
+        if (_playerState.value == null) {
+            _playerState.update {
+                val exoPlayer = preloadManagerBuilder.buildExoPlayer()
+
+                exoPlayer
+            }
+        }
+    }
+
+    fun updateCurrentPlayingIndex(index: Int) {
+        _playerState.value?.let { player ->
+            _preloadStatusControl.value?.currentPlayingIndex = index
+
+            val preloadManager = _preloadManagerState.value
+            val mediaItem = preloadMediaItems.value[index]
+
+            val mediaSource = preloadManager?.getMediaSource(mediaItem)
+
+            if (mediaSource != null) {
+                player.setMediaSource(mediaSource)
+            } else {
+                player.setMediaItem(mediaItem)
+            }
+            player.prepare()
+
+            player.play()
+
+            preloadManager?.setCurrentPlayingIndex(index)
+
+            preloadManager?.invalidate()
+        }
+    }
+
+    fun invalidateExoPlayer() {
+        _playerState.value?.release()
+        _playerState.value = null
+    }
+
+    fun invalidatePreloadManager() {
+        _preloadManagerState.value?.invalidate()
+        _preloadManagerState.value = null
+    }
+
+    private fun createPreloadManagerBuilder(context: Context) : DefaultPreloadManager.Builder {
+        val targetPreloadStatusControl = PreloadStatusControl()
+
+        _preloadStatusControl.value = targetPreloadStatusControl
+
+        val preloadManagerBuilder = DefaultPreloadManager.Builder(context, targetPreloadStatusControl)
+        return preloadManagerBuilder
+    }
+
+    private fun addItemsToPreloadManager(mediaItems: List<MediaItem>, preloadManager: DefaultPreloadManager) {
+        for (index in 0 until mediaItems.size) {
+            preloadManager.add(mediaItems[index], index)
+        }
+
+        preloadMediaItems.value = mediaItems
+
+        preloadManager.invalidate()
     }
 
     private fun boost(band: BoostType) {
