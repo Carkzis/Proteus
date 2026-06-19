@@ -38,9 +38,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -337,6 +339,13 @@ fun PlayerScreen(
         item {
             preloadManager?.let {
                 val pagerState = rememberPagerState(pageCount = { preloadUrls.size - 1 })
+                var currentPage by remember { mutableIntStateOf(0) }
+
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.currentPage }.collect { page ->
+                        currentPage = page
+                    }
+                }
 
                 HorizontalPager(
                     state = pagerState,
@@ -366,13 +375,13 @@ fun PlayerScreen(
                             context.findActivity().setPictureInPictureParams(builder.build())
                         }
 
-                        VideoPlayer(
-                            modifier = pipModifier,
-                            exoPlayer = exoPlayer,
-                            isInPipMode = isInPipMode
-                        )
+                        if (page == currentPage) {
+                            VideoPlayer(
+                                modifier = pipModifier,
+                                exoPlayer = exoPlayer,
+                                isInPipMode = isInPipMode
+                            )
 
-                        if (page == pagerState.currentPage) {
                             updateCurrentPlayingIndex(page)
                         }
                     }
